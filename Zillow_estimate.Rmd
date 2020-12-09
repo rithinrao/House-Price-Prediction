@@ -1,0 +1,90 @@
+---
+title: "Group-3_BA-Final Project"
+author: "Group-3"
+date: "12/6/2019"
+output: html_document
+---
+```{r}
+library(caret)
+library(readr)
+library(VIM)
+
+train_1_ <- read_csv("train.csv")
+test <- read_csv("test.csv")
+
+colMeans(is.na(train_1_)) # Fetching the NA's
+k_na<-na.omit(train_1_) # Removing the NA Rows.
+
+# Predicting the K Value
+search_grid<-expand.grid(k=c(1:20)) 
+K<-train(SalePrice ~.,data=k_na,method="knn",tuneGrid=search_grid,preProcess='range')
+K # K Value based on the Optimal Model
+# Imputing NA Values by KNN Method
+train1<-kNN(train_1_,variable=c("LotFrontage","MasVnrArea","GarageYrBlt"),k=13)
+train1<-train1[,-c(1,37,38,39)]
+
+
+##************Building Linear Regression Models*************
+
+model1<-lm(SalePrice~.,data = train1)
+summary(model1) #Summary of the model
+#R-Square value 85 implies that it captured  84.99% of Variability
+plot(model1$residuals) # Constant Variance
+qqnorm(model1$residuals,col='blue')#Residual plot
+qqline(model1$residuals)#Residual line
+#Variable importance of the model
+anova(model1)
+options(scipen = 999)
+#By considering the variables which are statistically significant by  taking the pr value cutoff as less than 0.000001
+# Building the model
+model2_data<-train_1_[,c(2,3,4,5,7,8,9,10,11,13,14,20,22,36)] 
+model2<-lm(SalePrice~.,data = model2_data)
+summary(model2) ## taking 13 variables
+qqnorm(model2$residuals,col='red') ## Residual plot
+qqline(model2$residuals) ## Residual line
+anova(model2) ## we are getting the accuracy of 84.21%
+
+#By considering the variables which are statistically significant by  taking the pr value cutoff as less than 0.01
+# Building the model
+model3_data<-train_1_[,c(2,3,4,5,7,8,9,10,11,12,13,14,20,22,25,31,36)]
+model3<-lm(SalePrice~.,data = model3_data)
+summary(model3) ## Taking 16 variables
+qqnorm(model3$residuals,col='green')
+qqline(model3$residuals) ## plotting the residual values
+anova(model3) ## we are getting an accuracy of 84.72 from the model
+
+## By considering the variables which are statistically significant by  taking the pr value cutoff as less than 0.1
+model4_data<-train_1_[,c(2,3,4,5,7,8,9,10,11,12,13,14,15,20,22,24,25,26,31,36)]
+model4<-lm(SalePrice~.,data = model4_data)
+summary(model4) ## we are taking 19 variables
+qqnorm(model4$residuals,col='red')
+qqline(model4$residuals) ## plotting the residual values
+anova(model4) ## we are getting an accuracy of 84.72 from the moddel
+
+## we are considering model3 as optimal model with 16 variables and accuracy of 84.72%
+colMeans(is.na(test)) ## viewing na values of test data
+test1<-kNN(test,variable=c("LotFrontage","MasVnrArea","GarageYrBlt"),k=K$bestTune)
+test1<-test1[,-c(36,37,38)]
+
+
+test_predict<-predict(model3,test1) ## predicting the price values using the best model  
+test1$predicted_value<-test_predict
+
+
+head(predict(model3,test1,interval = "prediction",level = 0.95))
+head(confint(model3,level = 0.9)) ## confidence levels
+
+## plotting between prdicted value and Year built
+ggplot(data = test1, aes(x = YearBuilt, y = predicted_value)) + 
+  geom_point(color='red') +
+  geom_smooth(method = "lm", se = FALSE)
+## plotting between predicted values and Lot Frontage 
+ggplot(data = test1, aes(x = LotFrontage, y = predicted_value)) + 
+  geom_point(color='red') +
+  geom_smooth(method = "lm", se = FALSE)
+## plotting between predicted values and ovrall quality
+ggplot(data = test1, aes(x = OverallQual, y = predicted_value)) + 
+  geom_point(color='red') +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
